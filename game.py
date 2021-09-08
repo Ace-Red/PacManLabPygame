@@ -83,7 +83,56 @@ def setupRoom(all_sprites_list):
     return wall_list
 
 
+class Player(pygame.sprite.Sprite):
+    change_x = 0
+    change_y = 0
 
+    def __init__(self, x, y, filename):
+
+        pygame.sprite.Sprite.__init__(self)
+
+        self.image = pygame.image.load(filename).convert()
+
+        self.rect = self.image.get_rect()
+        self.rect.top = y
+        self.rect.left = x
+        self.prev_x = x
+        self.prev_y = y
+
+    def prevdirection(self):
+        self.prev_x = self.change_x
+        self.prev_y = self.change_y
+
+    def changespeed(self, x, y):
+        self.change_x += x
+        self.change_y += y
+
+    def update(self, walls):
+
+        old_x = self.rect.left
+        new_x = old_x + self.change_x
+
+        self.rect.left = new_x
+
+        old_y = self.rect.top
+        new_y = old_y + self.change_y
+
+        x_collide = pygame.sprite.spritecollide(self, walls, False)
+        if x_collide:
+
+            self.rect.left = old_x
+
+        else:
+
+            self.rect.top = new_y
+
+            y_collide = pygame.sprite.spritecollide(self, walls, False)
+            if y_collide:
+                self.rect.top = old_y
+
+
+w = 303 - 16
+p_h = (7 * 60) + 19
 
 
 def startGame():
@@ -91,17 +140,43 @@ def startGame():
     all_sprites_list = pygame.sprite.RenderPlain()
     wall_list = setupRoom(all_sprites_list)
 
+    pacman_collide = pygame.sprite.RenderPlain()
+    pacman = Player(w, p_h, "pacman.png")
+    all_sprites_list.add(pacman)
+    pacman_collide.add(pacman)
     while done == False:
 
         clock.tick(10)
 
         for event in pygame.event.get():
-
             if event.type == pygame.QUIT:
                 done = True
 
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_LEFT:
+                    pacman.changespeed(-30, 0)
+                if event.key == pygame.K_RIGHT:
+                    pacman.changespeed(30, 0)
+                if event.key == pygame.K_UP:
+                    pacman.changespeed(0, -30)
+                if event.key == pygame.K_DOWN:
+                    pacman.changespeed(0, 30)
+
+            if event.type == pygame.KEYUP:
+                if event.key == pygame.K_LEFT:
+                    pacman.changespeed(30, 0)
+                if event.key == pygame.K_RIGHT:
+                    pacman.changespeed(-30, 0)
+                if event.key == pygame.K_UP:
+                    pacman.changespeed(0, 30)
+                if event.key == pygame.K_DOWN:
+                    pacman.changespeed(0, -30)
+        pacman.update(wall_list)
+
         screen.fill(black)
         wall_list.draw(screen)
+
+        all_sprites_list.draw(screen)
         pygame.display.flip()
 
 
