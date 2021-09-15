@@ -83,6 +83,19 @@ def setupRoom(all_sprites_list):
     return wall_list
 
 
+class Block(pygame.sprite.Sprite):
+
+    def __init__(self, color, width, height):
+        pygame.sprite.Sprite.__init__(self)
+
+        self.image = pygame.Surface([width, height])
+        self.image.fill(white)
+        self.image.set_colorkey(white)
+        pygame.draw.ellipse(self.image, color, [0, 0, width, height])
+
+        self.rect = self.image.get_rect()
+
+
 class Player(pygame.sprite.Sprite):
     change_x = 0
     change_y = 0
@@ -138,12 +151,35 @@ p_h = (7 * 60) + 19
 def startGame():
     done = False
     all_sprites_list = pygame.sprite.RenderPlain()
+    block_list = pygame.sprite.RenderPlain()
     wall_list = setupRoom(all_sprites_list)
 
     pacman_collide = pygame.sprite.RenderPlain()
     pacman = Player(w, p_h, "pacman.png")
     all_sprites_list.add(pacman)
     pacman_collide.add(pacman)
+
+    for row in range(19):
+        for column in range(19):
+            if (row == 7 or row == 8) and (column == 8 or column == 9 or column == 10):
+                continue
+            else:
+                block = Block(yellow, 4, 4)
+
+                block.rect.x = (30 * column + 6) + 26
+                block.rect.y = (30 * row + 6) + 26
+
+                b_collide = pygame.sprite.spritecollide(block, wall_list, False)
+                p_collide = pygame.sprite.spritecollide(block, pacman_collide, False)
+                if b_collide:
+                    continue
+                elif p_collide:
+                    continue
+                else:
+
+                    block_list.add(block)
+                    all_sprites_list.add(block)
+
     while done == False:
 
         clock.tick(10)
