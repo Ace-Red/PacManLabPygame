@@ -144,12 +144,12 @@ class Player(pygame.sprite.Sprite):
                 self.rect.top = old_y
 
 
+font = pygame.font.Font("freesansbold.ttf", 15)
 w = 303 - 16
 p_h = (7 * 60) + 19
 
 
 def startGame():
-    done = False
     all_sprites_list = pygame.sprite.RenderPlain()
     block_list = pygame.sprite.RenderPlain()
     wall_list = setupRoom(all_sprites_list)
@@ -179,8 +179,13 @@ def startGame():
 
                     block_list.add(block)
                     all_sprites_list.add(block)
+    bll = len(block_list)
 
-    while done == False:
+    score = 0
+
+    done = False
+
+    while not done:
 
         clock.tick(10)
 
@@ -207,13 +212,25 @@ def startGame():
                     pacman.changespeed(0, 30)
                 if event.key == pygame.K_DOWN:
                     pacman.changespeed(0, -30)
+
         pacman.update(wall_list)
 
-        screen.fill(black)
-        wall_list.draw(screen)
+        blocks_hit_list = pygame.sprite.spritecollide(pacman, block_list, True)
 
+        if len(blocks_hit_list) > 0:
+            score += len(blocks_hit_list)
+
+        screen.fill(black)
+
+        wall_list.draw(screen)
         all_sprites_list.draw(screen)
+
+        text = font.render("Score: " + str(score) + "/" + str(bll), True, yellow)
+        screen.blit(text, [10, 10])
+
         pygame.display.flip()
+
+        clock.tick(10)
 
 
 startGame()
