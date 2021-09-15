@@ -406,7 +406,6 @@ def startGame():
         Clyde.changespeed(Clyde_directions, "clyde", c_turn, c_steps, cl)
         Clyde.update(wall_list)
 
-        # See if the Pacman block has collided with anything.
         blocks_hit_list = pygame.sprite.spritecollide(pacman, block_list, True)
 
         if len(blocks_hit_list) > 0:
@@ -420,9 +419,54 @@ def startGame():
         text = font.render("Score: " + str(score) + "/" + str(bll), True, yellow)
         screen.blit(text, [10, 10])
 
+        if score == bll:
+            doNext("Congratulations, you won!", 145, all_sprites_list, block_list, monsta_list, pacman_collide,
+                   wall_list)
+
+        monsta_hit_list = pygame.sprite.spritecollide(pacman, monsta_list, False)
+
+        if monsta_hit_list:
+            doNext("Game Over", 235, all_sprites_list, block_list, monsta_list, pacman_collide, wall_list)
+
         pygame.display.flip()
 
         clock.tick(30)
+
+
+def doNext(message, left, all_sprites_list, block_list, monsta_list, pacman_collide, wall_list):
+    while True:
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_ESCAPE:
+                    pygame.quit()
+                if event.key == pygame.K_RETURN:
+                    del all_sprites_list
+                    del block_list
+                    del monsta_list
+                    del pacman_collide
+                    del wall_list
+
+                    startGame()
+
+        w = pygame.Surface((400, 200))
+        w.set_alpha(10)
+        w.fill((128, 128, 128))
+        screen.blit(w, (100, 200))
+        font2 = pygame.font.Font("freesansbold.ttf", 24)
+        text1 = font2.render(message, True, white)
+        screen.blit(text1, [left, 233])
+
+        text2 = font2.render("To play again, press ENTER.", True, white)
+        screen.blit(text2, [135, 303])
+        text3 = font2.render("To quit, press ESCAPE.", True, white)
+        screen.blit(text3, [165, 333])
+
+        pygame.display.flip()
+
+        clock.tick(10)
 
 
 startGame()
