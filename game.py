@@ -8,6 +8,117 @@ red = (255, 0, 0)
 purple = (255, 0, 255)
 yellow = (255, 255, 0)
 
+Pinky_directions = [
+    [0, -30, 4],
+    [15, 0, 9],
+    [0, 15, 11],
+    [-15, 0, 23],
+    [0, 15, 7],
+    [15, 0, 3],
+    [0, -15, 3],
+    [15, 0, 19],
+    [0, 15, 3],
+    [15, 0, 3],
+    [0, 15, 3],
+    [15, 0, 3],
+    [0, -15, 15],
+    [-15, 0, 7],
+    [0, 15, 3],
+    [-15, 0, 19],
+    [0, -15, 11],
+    [15, 0, 9]
+]
+
+Blinky_directions = [
+    [0, -15, 4],
+    [15, 0, 9],
+    [0, 15, 11],
+    [15, 0, 3],
+    [0, 15, 7],
+    [-15, 0, 11],
+    [0, 15, 3],
+    [15, 0, 15],
+    [0, -15, 15],
+    [15, 0, 3],
+    [0, -15, 11],
+    [-15, 0, 3],
+    [0, -15, 11],
+    [-15, 0, 3],
+    [0, -15, 3],
+    [-15, 0, 7],
+    [0, -15, 3],
+    [15, 0, 15],
+    [0, 15, 15],
+    [-15, 0, 3],
+    [0, 15, 3],
+    [-15, 0, 3],
+    [0, -15, 7],
+    [-15, 0, 3],
+    [0, 15, 7],
+    [-15, 0, 11],
+    [0, -15, 7],
+    [15, 0, 5]
+]
+
+Inky_directions = [
+    [30, 0, 2],
+    [0, -15, 4],
+    [15, 0, 10],
+    [0, 15, 7],
+    [15, 0, 3],
+    [0, -15, 3],
+    [15, 0, 3],
+    [0, -15, 15],
+    [-15, 0, 15],
+    [0, 15, 3],
+    [15, 0, 15],
+    [0, 15, 11],
+    [-15, 0, 3],
+    [0, -15, 7],
+    [-15, 0, 11],
+    [0, 15, 3],
+    [-15, 0, 11],
+    [0, 15, 7],
+    [-15, 0, 3],
+    [0, -15, 3],
+    [-15, 0, 3],
+    [0, -15, 15],
+    [15, 0, 15],
+    [0, 15, 3],
+    [-15, 0, 15],
+    [0, 15, 11],
+    [15, 0, 3],
+    [0, -15, 11],
+    [15, 0, 11],
+    [0, 15, 3],
+    [15, 0, 1],
+]
+
+Clyde_directions = [
+    [-30, 0, 2],
+    [0, -15, 4],
+    [15, 0, 5],
+    [0, 15, 7],
+    [-15, 0, 11],
+    [0, -15, 7],
+    [-15, 0, 3],
+    [0, 15, 7],
+    [-15, 0, 7],
+    [0, 15, 15],
+    [15, 0, 15],
+    [0, -15, 3],
+    [-15, 0, 11],
+    [0, -15, 7],
+    [15, 0, 3],
+    [0, -15, 11],
+    [15, 0, 9],
+]
+
+pl = len(Pinky_directions) - 1
+bl = len(Blinky_directions) - 1
+il = len(Inky_directions) - 1
+cl = len(Clyde_directions) - 1
+
 pygame.init()
 WIDTH = 606
 HEIGHT = 606
@@ -144,6 +255,30 @@ class Player(pygame.sprite.Sprite):
                 self.rect.top = old_y
 
 
+class Ghost(Player):
+    # Change the speed of the ghost
+    def changespeed(self, list, ghost, turn, steps, l):
+        try:
+            z = list[turn][2]
+            if steps < z:
+                self.change_x = list[turn][0]
+                self.change_y = list[turn][1]
+                steps += 1
+            else:
+                if turn < l:
+                    turn += 1
+                elif ghost == "clyde":
+                    turn = 2
+                else:
+                    turn = 0
+                self.change_x = list[turn][0]
+                self.change_y = list[turn][1]
+                steps = 0
+            return [turn, steps]
+        except IndexError:
+            return [0, 0]
+
+
 font = pygame.font.Font("freesansbold.ttf", 15)
 w = 303 - 16
 p_h = (7 * 60) + 19
@@ -153,29 +288,42 @@ b_h = (3 * 60) + 19
 i_w = 303 - 16 - 32
 c_w = 303 + (32 - 16)
 
+
 def startGame():
     all_sprites_list = pygame.sprite.RenderPlain()
     block_list = pygame.sprite.RenderPlain()
     wall_list = setupRoom(all_sprites_list)
     monsta_list = pygame.sprite.RenderPlain()
 
+    p_turn = 0
+    p_steps = 0
+
+    b_turn = 0
+    b_steps = 0
+
+    i_turn = 0
+    i_steps = 0
+
+    c_turn = 0
+    c_steps = 0
+
     pacman_collide = pygame.sprite.RenderPlain()
     pacman = Player(w, p_h, "pacman.png")
     all_sprites_list.add(pacman)
     pacman_collide.add(pacman)
-    Blinky = Player(w, b_h, "Blinky.png")
+    Blinky = Ghost(w, b_h, "Blinky.png")
     monsta_list.add(Blinky)
     all_sprites_list.add(Blinky)
 
-    Pinky = Player(w, m_h, "Pinky.png")
+    Pinky = Ghost(w, m_h, "Pinky.png")
     monsta_list.add(Pinky)
     all_sprites_list.add(Pinky)
 
-    Inky = Player(i_w, m_h, "Inky.png")
+    Inky = Ghost(i_w, m_h, "Inky.png")
     monsta_list.add(Inky)
     all_sprites_list.add(Inky)
 
-    Clyde = Player(c_w, m_h, "Clyde.png")
+    Clyde = Ghost(c_w, m_h, "Clyde.png")
     monsta_list.add(Clyde)
     all_sprites_list.add(Clyde)
     for row in range(19):
@@ -234,6 +382,31 @@ def startGame():
 
         pacman.update(wall_list)
 
+        returned = Pinky.changespeed(Pinky_directions, False, p_turn, p_steps, pl)
+        p_turn = returned[0]
+        p_steps = returned[1]
+        Pinky.changespeed(Pinky_directions, False, p_turn, p_steps, pl)
+        Pinky.update(wall_list)
+
+        returned = Blinky.changespeed(Blinky_directions, False, b_turn, b_steps, bl)
+        b_turn = returned[0]
+        b_steps = returned[1]
+        Blinky.changespeed(Blinky_directions, False, b_turn, b_steps, bl)
+        Blinky.update(wall_list)
+
+        returned = Inky.changespeed(Inky_directions, False, i_turn, i_steps, il)
+        i_turn = returned[0]
+        i_steps = returned[1]
+        Inky.changespeed(Inky_directions, False, i_turn, i_steps, il)
+        Inky.update(wall_list)
+
+        returned = Clyde.changespeed(Clyde_directions, "clyde", c_turn, c_steps, cl)
+        c_turn = returned[0]
+        c_steps = returned[1]
+        Clyde.changespeed(Clyde_directions, "clyde", c_turn, c_steps, cl)
+        Clyde.update(wall_list)
+
+        # See if the Pacman block has collided with anything.
         blocks_hit_list = pygame.sprite.spritecollide(pacman, block_list, True)
 
         if len(blocks_hit_list) > 0:
@@ -249,7 +422,7 @@ def startGame():
 
         pygame.display.flip()
 
-        clock.tick(10)
+        clock.tick(30)
 
 
 startGame()
