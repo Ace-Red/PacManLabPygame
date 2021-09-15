@@ -148,17 +148,36 @@ font = pygame.font.Font("freesansbold.ttf", 15)
 w = 303 - 16
 p_h = (7 * 60) + 19
 
+m_h = (4 * 60) + 19
+b_h = (3 * 60) + 19
+i_w = 303 - 16 - 32
+c_w = 303 + (32 - 16)
 
 def startGame():
     all_sprites_list = pygame.sprite.RenderPlain()
     block_list = pygame.sprite.RenderPlain()
     wall_list = setupRoom(all_sprites_list)
+    monsta_list = pygame.sprite.RenderPlain()
 
     pacman_collide = pygame.sprite.RenderPlain()
     pacman = Player(w, p_h, "pacman.png")
     all_sprites_list.add(pacman)
     pacman_collide.add(pacman)
+    Blinky = Player(w, b_h, "Blinky.png")
+    monsta_list.add(Blinky)
+    all_sprites_list.add(Blinky)
 
+    Pinky = Player(w, m_h, "Pinky.png")
+    monsta_list.add(Pinky)
+    all_sprites_list.add(Pinky)
+
+    Inky = Player(i_w, m_h, "Inky.png")
+    monsta_list.add(Inky)
+    all_sprites_list.add(Inky)
+
+    Clyde = Player(c_w, m_h, "Clyde.png")
+    monsta_list.add(Clyde)
+    all_sprites_list.add(Clyde)
     for row in range(19):
         for column in range(19):
             if (row == 7 or row == 8) and (column == 8 or column == 9 or column == 10):
