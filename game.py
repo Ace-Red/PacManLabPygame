@@ -351,7 +351,7 @@ def startGame():
     score = 0
 
     done = False
-
+    imgPacMan = "pacman.png"
     while not done:
 
         clock.tick(10)
@@ -363,12 +363,16 @@ def startGame():
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_LEFT:
                     pacman.changespeed(-30, 0)
+                    pacman.image = pygame.transform.rotate(pygame.image.load("pacman.png").convert(), 180)
                 if event.key == pygame.K_RIGHT:
                     pacman.changespeed(30, 0)
+                    pacman.image = pygame.transform.rotate(pygame.image.load("pacman.png").convert(), 0)
                 if event.key == pygame.K_UP:
                     pacman.changespeed(0, -30)
+                    pacman.image = pygame.transform.rotate(pygame.image.load("pacman.png").convert(), 90)
                 if event.key == pygame.K_DOWN:
                     pacman.changespeed(0, 30)
+                    pacman.image = pygame.transform.rotate(pygame.image.load("pacman.png").convert(), -90)
 
             if event.type == pygame.KEYUP:
                 if event.key == pygame.K_LEFT:
