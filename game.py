@@ -1,477 +1,171 @@
-import pygame
+import math
+from timeit import default_timer as timer
 
-black = (0, 0, 0)
-white = (255, 255, 255)
-blue = (0, 0, 255)
-green = (0, 255, 0)
-red = (255, 0, 0)
-purple = (255, 0, 255)
-yellow = (255, 255, 0)
+import pygame.mixer
 
-Pinky_directions = [
-    [0, -30, 4],
-    [15, 0, 9],
-    [0, 15, 11],
-    [-15, 0, 23],
-    [0, 15, 7],
-    [15, 0, 3],
-    [0, -15, 3],
-    [15, 0, 19],
-    [0, 15, 3],
-    [15, 0, 3],
-    [0, 15, 3],
-    [15, 0, 3],
-    [0, -15, 15],
-    [-15, 0, 7],
-    [0, 15, 3],
-    [-15, 0, 19],
-    [0, -15, 11],
-    [15, 0, 9]
-]
+from enemies import Blinky, Clyde, Inky, Pinky
+from entity import Block, Ellipse
+from enviroment import generate_environment, draw_environment
+from player import Player
+from parameters import *
 
-Blinky_directions = [
-    [0, -15, 4],
-    [15, 0, 9],
-    [0, 15, 11],
-    [15, 0, 3],
-    [0, 15, 7],
-    [-15, 0, 11],
-    [0, 15, 3],
-    [15, 0, 15],
-    [0, -15, 15],
-    [15, 0, 3],
-    [0, -15, 11],
-    [-15, 0, 3],
-    [0, -15, 11],
-    [-15, 0, 3],
-    [0, -15, 3],
-    [-15, 0, 7],
-    [0, -15, 3],
-    [15, 0, 15],
-    [0, 15, 15],
-    [-15, 0, 3],
-    [0, 15, 3],
-    [-15, 0, 3],
-    [0, -15, 7],
-    [-15, 0, 3],
-    [0, 15, 7],
-    [-15, 0, 11],
-    [0, -15, 7],
-    [15, 0, 5]
-]
-
-Inky_directions = [
-    [30, 0, 2],
-    [0, -15, 4],
-    [15, 0, 10],
-    [0, 15, 7],
-    [15, 0, 3],
-    [0, -15, 3],
-    [15, 0, 3],
-    [0, -15, 15],
-    [-15, 0, 15],
-    [0, 15, 3],
-    [15, 0, 15],
-    [0, 15, 11],
-    [-15, 0, 3],
-    [0, -15, 7],
-    [-15, 0, 11],
-    [0, 15, 3],
-    [-15, 0, 11],
-    [0, 15, 7],
-    [-15, 0, 3],
-    [0, -15, 3],
-    [-15, 0, 3],
-    [0, -15, 15],
-    [15, 0, 15],
-    [0, 15, 3],
-    [-15, 0, 15],
-    [0, 15, 11],
-    [15, 0, 3],
-    [0, -15, 11],
-    [15, 0, 11],
-    [0, 15, 3],
-    [15, 0, 1],
-]
-
-Clyde_directions = [
-    [-30, 0, 2],
-    [0, -15, 4],
-    [15, 0, 5],
-    [0, 15, 7],
-    [-15, 0, 11],
-    [0, -15, 7],
-    [-15, 0, 3],
-    [0, 15, 7],
-    [-15, 0, 7],
-    [0, 15, 15],
-    [15, 0, 15],
-    [0, -15, 3],
-    [-15, 0, 11],
-    [0, -15, 7],
-    [15, 0, 3],
-    [0, -15, 11],
-    [15, 0, 9],
-]
-
-pl = len(Pinky_directions) - 1
-bl = len(Blinky_directions) - 1
-il = len(Inky_directions) - 1
-cl = len(Clyde_directions) - 1
-
-pygame.init()
-WIDTH = 606
-HEIGHT = 606
-screen = pygame.display.set_mode([WIDTH, HEIGHT])
-pygame.display.set_caption('PacMan')
-background = pygame.Surface(screen.get_size())
-background = background.convert()
-background.fill(black)
-clock = pygame.time.Clock()
+pygame.mixer.init()
 
 
-class Wall(pygame.sprite.Sprite):
+class Game(object):
 
-    def __init__(self, x, y, width, height, color):
-        pygame.sprite.Sprite.__init__(self)
+    def __init__(self, records):
+        self.records = records
 
-        self.image = pygame.Surface([width, height])
-        self.image.fill(color)
+        self.game_over = True
+        self.win = False
+        self.life = MAX_LIFE_LEVEL
+        # font for score on the screen
+        self.font = pygame.font.Font(None, 35)
 
-        self.rect = self.image.get_rect()
-        self.rect.top = y
-        self.rect.left = x
+        self.score = 0
+        self.level = 1
+        self.grid = generate_environment()
 
+        self.player = Player(self.grid)
+        # paths blocks
+        self.empty_blocks = pygame.sprite.Group()
+        self.non_empty_blocks = pygame.sprite.Group()
+        self.dots_group = pygame.sprite.Group()
 
-def setupRoom(all_sprites_list):
-    wall_list = pygame.sprite.RenderPlain()
-
-    walls = [[0, 0, 6, 600],
-             [0, 0, 600, 6],
-             [0, 600, 606, 6],
-             [600, 0, 6, 606],
-             [300, 0, 6, 66],
-             [60, 60, 186, 6],
-             [360, 60, 186, 6],
-             [60, 120, 66, 6],
-             [60, 120, 6, 126],
-             [180, 120, 246, 6],
-             [300, 120, 6, 66],
-             [480, 120, 66, 6],
-             [540, 120, 6, 126],
-             [120, 180, 126, 6],
-             [120, 180, 6, 126],
-             [360, 180, 126, 6],
-             [480, 180, 6, 126],
-             [180, 240, 6, 126],
-             [180, 360, 246, 6],
-             [420, 240, 6, 126],
-             [240, 240, 42, 6],
-             [324, 240, 42, 6],
-             [240, 240, 6, 66],
-             [240, 300, 126, 6],
-             [360, 240, 6, 66],
-             [0, 300, 66, 6],
-             [540, 300, 66, 6],
-             [60, 360, 66, 6],
-             [60, 360, 6, 186],
-             [480, 360, 66, 6],
-             [540, 360, 6, 186],
-             [120, 420, 366, 6],
-             [120, 420, 6, 66],
-             [480, 420, 6, 66],
-             [180, 480, 246, 6],
-             [300, 480, 6, 66],
-             [120, 540, 126, 6],
-             [360, 540, 126, 6]
-             ]
-
-    for item in walls:
-        wall = Wall(item[0], item[1], item[2], item[3], green)
-        wall_list.add(wall)
-        all_sprites_list.add(wall)
-
-    return wall_list
-
-
-class Block(pygame.sprite.Sprite):
-
-    def __init__(self, color, width, height):
-        pygame.sprite.Sprite.__init__(self)
-
-        self.image = pygame.Surface([width, height])
-        self.image.fill(white)
-        self.image.set_colorkey(white)
-        pygame.draw.ellipse(self.image, color, [0, 0, width, height])
-
-        self.rect = self.image.get_rect()
-
-
-class Player(pygame.sprite.Sprite):
-    change_x = 0
-    change_y = 0
-
-    def __init__(self, x, y, filename):
-
-        pygame.sprite.Sprite.__init__(self)
-
-        self.image = pygame.image.load(filename).convert()
-
-        self.rect = self.image.get_rect()
-        self.rect.top = y
-        self.rect.left = x
-        self.prev_x = x
-        self.prev_y = y
-
-    def prevdirection(self):
-        self.prev_x = self.change_x
-        self.prev_y = self.change_y
-
-    def changespeed(self, x, y):
-        self.change_x += x
-        self.change_y += y
-
-    def update(self, walls):
-
-        old_x = self.rect.left
-        new_x = old_x + self.change_x
-
-        self.rect.left = new_x
-
-        old_y = self.rect.top
-        new_y = old_y + self.change_y
-
-        x_collide = pygame.sprite.spritecollide(self, walls, False)
-        if x_collide:
-
-            self.rect.left = old_x
-
-        else:
-
-            self.rect.top = new_y
-
-            y_collide = pygame.sprite.spritecollide(self, walls, False)
-            if y_collide:
-                self.rect.top = old_y
-
-
-class Ghost(Player):
-    # Change the speed of the ghost
-    def changespeed(self, list, ghost, turn, steps, l):
-        try:
-            z = list[turn][2]
-            if steps < z:
-                self.change_x = list[turn][0]
-                self.change_y = list[turn][1]
-                steps += 1
-            else:
-                if turn < l:
-                    turn += 1
-                elif ghost == "clyde":
-                    turn = 2
+        for i, row in enumerate(self.grid):
+            for j, item in enumerate(row):
+                if item == 0:
+                    self.empty_blocks.add(
+                        Block(j * BLOCK_SIZE + 8, i * BLOCK_SIZE + 8, BLACK, HALF_BLOCK_SIZE + 4, HALF_BLOCK_SIZE + 4))
                 else:
-                    turn = 0
-                self.change_x = list[turn][0]
-                self.change_y = list[turn][1]
-                steps = 0
-            return [turn, steps]
-        except IndexError:
-            return [0, 0]
+                    self.non_empty_blocks.add(
+                        Block(j * BLOCK_SIZE + QUARTER_BLOCK_SIZE, i * BLOCK_SIZE + QUARTER_BLOCK_SIZE, BLACK,
+                              HALF_BLOCK_SIZE, HALF_BLOCK_SIZE))
+                    self.dots_group.add(Ellipse(j * BLOCK_SIZE + 12, i * BLOCK_SIZE + 12, WHITE, QUARTER_BLOCK_SIZE,
+                                                QUARTER_BLOCK_SIZE))
 
+        self.blinky = Blinky(self.grid)
+        self.clyde = Clyde(self.grid)
+        self.inky = Inky(self.grid)
+        self.pinky = Pinky(self.grid)
+        self.enemies = pygame.sprite.Group(self.blinky, self.clyde, self.inky, self.pinky)
 
-font = pygame.font.Font("freesansbold.ttf", 15)
-w = 303 - 16
-p_h = (7 * 60) + 19
+        self.path_search_engine_index = 0
+        self.timer_counter = 0
+        self.total_search_engine_time = 0
+        self.previous_search_engine_time = 0
 
-m_h = (4 * 60) + 19
-b_h = (3 * 60) + 19
-i_w = 303 - 16 - 32
-c_w = 303 + (32 - 16)
-
-
-def startGame():
-    all_sprites_list = pygame.sprite.RenderPlain()
-    block_list = pygame.sprite.RenderPlain()
-    wall_list = setupRoom(all_sprites_list)
-    monsta_list = pygame.sprite.RenderPlain()
-
-    p_turn = 0
-    p_steps = 0
-
-    b_turn = 0
-    b_steps = 0
-
-    i_turn = 0
-    i_steps = 0
-
-    c_turn = 0
-    c_steps = 0
-
-    pacman_collide = pygame.sprite.RenderPlain()
-    pacman = Player(w, p_h, "pacman.png")
-    all_sprites_list.add(pacman)
-    pacman_collide.add(pacman)
-    Blinky = Ghost(w, b_h, "Blinky.png")
-    monsta_list.add(Blinky)
-    all_sprites_list.add(Blinky)
-
-    Pinky = Ghost(w, m_h, "Pinky.png")
-    monsta_list.add(Pinky)
-    all_sprites_list.add(Pinky)
-
-    Inky = Ghost(i_w, m_h, "Inky.png")
-    monsta_list.add(Inky)
-    all_sprites_list.add(Inky)
-
-    Clyde = Ghost(c_w, m_h, "Clyde.png")
-    monsta_list.add(Clyde)
-    all_sprites_list.add(Clyde)
-    for row in range(19):
-        for column in range(19):
-            if (row == 7 or row == 8) and (column == 8 or column == 9 or column == 10):
-                continue
+    def run_logic(self):
+        if not self.game_over:
+            self.player.update(self.empty_blocks)
+            block_hit_list = pygame.sprite.spritecollide(self.player, self.dots_group, True)
+            if len(block_hit_list) > 0:
+                self.score += len(block_hit_list)
+            if self.life > 1:
+                block_hit_list = pygame.sprite.spritecollide(self.player, self.enemies, False)
+                if len(block_hit_list) > 0:
+                    self.decrease_life_level()
             else:
-                block = Block(yellow, 4, 4)
+                block_hit_list = pygame.sprite.spritecollide(self.player, self.enemies, True)
+                if len(block_hit_list) > 0:
+                    self.player.explosion = True
 
-                block.rect.x = (30 * column + 6) + 26
-                block.rect.y = (30 * row + 6) + 26
+            self.game_over = self.player.game_over
+            self.enemies.update()
+            # win effect
+            if len(self.dots_group) == 0:
+                self.increase_level()
 
-                b_collide = pygame.sprite.spritecollide(block, wall_list, False)
-                p_collide = pygame.sprite.spritecollide(block, pacman_collide, False)
-                if b_collide:
-                    continue
-                elif p_collide:
-                    continue
-                else:
+            if self.level == MAX_LEVEL + 1:
+                self.game_over = True
+                self.win = True
 
-                    block_list.add(block)
-                    all_sprites_list.add(block)
-    bll = len(block_list)
+            if self.game_over:
+                self.records.add_score(self.score)
 
-    score = 0
+    def decrease_life_level(self):
+        self.life -= 1
+        self.player = Player(self.grid)
 
-    done = False
-    imgPacMan = "pacman.png"
-    while not done:
+    def increase_level(self):
+        level = self.level + 1
+        score = self.score
+        life = self.life
+        self.__init__(self.records)
+        self.level = level
+        self.life = life
+        self.score = score
+        self.game_over = False
 
-        clock.tick(10)
+    def draw_game(self, screen):
+        draw_environment(screen, self.grid)
+        self.dots_group.draw(screen)
+        self.enemies.draw(screen)
+        screen.blit(self.player.image, self.player.rect)
+        # Render the text for the score
+        text = self.font.render("Score: {}; HP: {}".format(self.score, self.life), True,
+                                WHITE)
+        # put text on screen
+        screen.blit(text, [120, 20])
+        self.display_search_results(screen)
 
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                done = True
+    def display_search_results(self, screen):
+        colors = [RED, YELLOW, BLUE, PURPLE]
+        total_time = 0
+        for sprite, color in zip(self.enemies.sprites(), colors):
+            j = sprite.rect.centerx // BLOCK_SIZE
+            i = sprite.rect.centery // BLOCK_SIZE
 
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_LEFT:
-                    pacman.changespeed(-30, 0)
-                    pacman.image = pygame.transform.rotate(pygame.image.load("pacman.png").convert(), 180)
-                if event.key == pygame.K_RIGHT:
-                    pacman.changespeed(30, 0)
-                    pacman.image = pygame.transform.rotate(pygame.image.load("pacman.png").convert(), 0)
-                if event.key == pygame.K_UP:
-                    pacman.changespeed(0, -30)
-                    pacman.image = pygame.transform.rotate(pygame.image.load("pacman.png").convert(), 90)
-                if event.key == pygame.K_DOWN:
-                    pacman.changespeed(0, 30)
-                    pacman.image = pygame.transform.rotate(pygame.image.load("pacman.png").convert(), -90)
+            start = timer()
+            path_to_player = self.apply_path_search_to_player(i, j)
+            end = timer()
+            total_time += end - start
 
-            if event.type == pygame.KEYUP:
-                if event.key == pygame.K_LEFT:
-                    pacman.changespeed(30, 0)
-                if event.key == pygame.K_RIGHT:
-                    pacman.changespeed(-30, 0)
-                if event.key == pygame.K_UP:
-                    pacman.changespeed(0, 30)
-                if event.key == pygame.K_DOWN:
-                    pacman.changespeed(0, -30)
+            display_line_array(screen, list(
+                map(lambda x: (BLOCK_SIZE * x[0] + HALF_BLOCK_SIZE, BLOCK_SIZE * (x[1] + 0.5)),
+                    path_to_player)), color)
+        self.total_search_engine_time += total_time
+        self.increase_timer_counter()
+        text = self.font.render("{}: {:5f}".format(self.name_of_path_search_engine(), self.previous_search_engine_time),
+                                True, WHITE)
+        screen.blit(text, [SCR_WIDTH - 200, 20])
 
-        pacman.update(wall_list)
+    def increase_timer_counter(self) -> None:
+        self.timer_counter += 1
+        if self.timer_counter == 15:
+            self.timer_counter = 0
+            self.previous_search_engine_time = self.total_search_engine_time
+            self.total_search_engine_time = 0
 
-        returned = Pinky.changespeed(Pinky_directions, False, p_turn, p_steps, pl)
-        p_turn = returned[0]
-        p_steps = returned[1]
-        Pinky.changespeed(Pinky_directions, False, p_turn, p_steps, pl)
-        Pinky.update(wall_list)
+    def name_of_path_search_engine(self) -> str:
+        if self.path_search_engine_index == 0:
+            return 'BFS'
+        if self.path_search_engine_index == 1:
+            return 'DFS'
+        return 'UCS'
 
-        returned = Blinky.changespeed(Blinky_directions, False, b_turn, b_steps, bl)
-        b_turn = returned[0]
-        b_steps = returned[1]
-        Blinky.changespeed(Blinky_directions, False, b_turn, b_steps, bl)
-        Blinky.update(wall_list)
+    def apply_path_search_to_player(self, i, j):
+        if self.path_search_engine_index == 0:
+            return self.player.breadth_first_search(i, j)
+        if self.path_search_engine_index == 1:
+            return self.player.deep_first_search(i, j)
+        return self.player.uniform_cost_search(i, j)
 
-        returned = Inky.changespeed(Inky_directions, False, i_turn, i_steps, il)
-        i_turn = returned[0]
-        i_steps = returned[1]
-        Inky.changespeed(Inky_directions, False, i_turn, i_steps, il)
-        Inky.update(wall_list)
-
-        returned = Clyde.changespeed(Clyde_directions, "clyde", c_turn, c_steps, cl)
-        c_turn = returned[0]
-        c_steps = returned[1]
-        Clyde.changespeed(Clyde_directions, "clyde", c_turn, c_steps, cl)
-        Clyde.update(wall_list)
-
-        blocks_hit_list = pygame.sprite.spritecollide(pacman, block_list, True)
-
-        if len(blocks_hit_list) > 0:
-            score += len(blocks_hit_list)
-
-        screen.fill(black)
-
-        wall_list.draw(screen)
-        all_sprites_list.draw(screen)
-
-        text = font.render("Score: " + str(score) + "/" + str(bll), True, yellow)
-        screen.blit(text, [10, 10])
-
-        if score == bll:
-            doNext("Congratulations, you won!", 145, all_sprites_list, block_list, monsta_list, pacman_collide,
-                   wall_list)
-
-        monsta_hit_list = pygame.sprite.spritecollide(pacman, monsta_list, False)
-
-        if monsta_hit_list:
-            doNext("Game Over", 235, all_sprites_list, block_list, monsta_list, pacman_collide, wall_list)
-
-        pygame.display.flip()
-
-        clock.tick(30)
+    def change_path_search_engine(self) -> None:
+        self.path_search_engine_index += 1
+        self.path_search_engine_index %= 3
 
 
-def doNext(message, left, all_sprites_list, block_list, monsta_list, pacman_collide, wall_list):
-    while True:
-
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:
-                    pygame.quit()
-                if event.key == pygame.K_RETURN:
-                    del all_sprites_list
-                    del block_list
-                    del monsta_list
-                    del pacman_collide
-                    del wall_list
-
-                    startGame()
-
-        w = pygame.Surface((400, 200))
-        w.set_alpha(10)
-        w.fill((128, 128, 128))
-        screen.blit(w, (100, 200))
-        font2 = pygame.font.Font("freesansbold.ttf", 24)
-        text1 = font2.render(message, True, white)
-        screen.blit(text1, [left, 233])
-
-        text2 = font2.render("To play again, press ENTER.", True, white)
-        screen.blit(text2, [135, 303])
-        text3 = font2.render("To quit, press ESCAPE.", True, white)
-        screen.blit(text3, [165, 333])
-
-        pygame.display.flip()
-
-        clock.tick(10)
+def display_line_array(screen, dots_array, color=BLUE):
+    if len(dots_array) < 2:
+        return
+    start_point = dots_array[0]
+    for point in dots_array[1:]:
+        if distance(start_point, point) <= 1.5 * BLOCK_SIZE:
+            pygame.draw.line(screen, color, [start_point[1], start_point[0]], [point[1], point[0]], 6)
+        start_point = point
 
 
-startGame()
-pygame.quit()
+def distance(dot_1, dot_2):
+    return math.sqrt((dot_1[0] - dot_2[0]) ** 2 + (dot_1[1] - dot_2[1]) ** 2)
