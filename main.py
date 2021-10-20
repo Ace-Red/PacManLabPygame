@@ -1,12 +1,12 @@
 import pygame
 
-from window import GameWindow
-from parameters import SCR_WIDTH, SCR_HEIGHT
+from game_window import GameWindow
+from parametrs import SCREEN_WIDTH, SCREEN_HEIGHT
 
 if __name__ == '__main__':
     pygame.init()
-    screen = pygame.display.set_mode((SCR_WIDTH, SCR_HEIGHT))
-    pygame.display.set_caption("PACMAN")
+    screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
+    pygame.display.set_caption("PACMAN - FOR LIFE EDITION")
     done = False
     clock = pygame.time.Clock()
     game = GameWindow(screen)

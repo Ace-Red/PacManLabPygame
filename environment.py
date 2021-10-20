@@ -2,7 +2,7 @@ import random
 
 import pygame
 
-from parameters import *
+from parametrs import *
 
 
 def apply_direction_to_grid(grid, x, y, direction):
@@ -23,9 +23,9 @@ def apply_direction_to_grid(grid, x, y, direction):
 
 
 def generate_environment():
-    grid = [[0 for x in range(GEN_Y)] for x in range(GEN_X)]
-    x = random.randint(0, GEN_X - 1)
-    y = random.randint(0, GEN_Y - 1)
+    grid = [[0 for x in range(DIMENSION_Y)] for x in range(DIMENSION_X)]
+    x = random.randint(0, DIMENSION_X - 1)
+    y = random.randint(0, DIMENSION_Y - 1)
     grid[x][y] = 1
     direction = random.randint(0, 3)
     for n in range(0, 500):
@@ -47,15 +47,15 @@ def draw_environment(screen, grid):
         for j, item in enumerate(row):
             if item != 0:
                 if grid[(i - 1) % dimension_x][j] == 0:
-                    pygame.draw.line(screen, BLUE_WALL, [j * BLOCK_SIZE, i * BLOCK_SIZE],
+                    pygame.draw.line(screen, GREEN, [j * BLOCK_SIZE, i * BLOCK_SIZE],
                                      [(j + 1) * BLOCK_SIZE, i * BLOCK_SIZE], 3)
                 if grid[(i + 1) % dimension_x][j] == 0:
-                    pygame.draw.line(screen, BLUE_WALL, [j * BLOCK_SIZE, (i + 1) * BLOCK_SIZE],
+                    pygame.draw.line(screen, GREEN, [j * BLOCK_SIZE, (i + 1) * BLOCK_SIZE],
                                      [(j + 1) * BLOCK_SIZE, (i + 1) * BLOCK_SIZE],
                                      3)
                 if grid[i][(j - 1) % dimension_y] == 0:
-                    pygame.draw.line(screen, BLUE_WALL, [j * BLOCK_SIZE, i * BLOCK_SIZE],
+                    pygame.draw.line(screen, GREEN, [j * BLOCK_SIZE, i * BLOCK_SIZE],
                                      [j * BLOCK_SIZE, (i + 1) * BLOCK_SIZE], 3)
                 if grid[i][(j + 1) % dimension_y] == 0:
-                    pygame.draw.line(screen, BLUE_WALL, [(j + 1) * BLOCK_SIZE, i * BLOCK_SIZE],
+                    pygame.draw.line(screen, GREEN, [(j + 1) * BLOCK_SIZE, i * BLOCK_SIZE],
                                      [(j + 1) * BLOCK_SIZE, (i + 1) * BLOCK_SIZE], 3)

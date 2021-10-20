@@ -1,6 +1,6 @@
 import pygame
 
-from parameters import *
+from parametrs import *
 
 
 class Menu(object):
@@ -19,9 +19,9 @@ class Menu(object):
             width = label.get_width()
             height = label.get_height()
 
-            pos_x = (SCR_WIDTH / 2) - (width / 2)
+            pos_x = (SCREEN_WIDTH / 2) - (width / 2)
             text_block_total_height = len(self.items) * height
-            pos_y = (SCR_HEIGHT / 2) - (text_block_total_height / 2) + (index * height)
+            pos_y = (SCREEN_HEIGHT / 2) - (text_block_total_height / 2) + (index * height)
 
             screen.blit(label, (pos_x, pos_y))
 

@@ -2,13 +2,13 @@ import random
 
 import pygame
 
-from parameters import BLACK, BLOCK_SIZE
+from parametrs import BLACK, BLOCK_SIZE
 
 
 class Block(pygame.sprite.Sprite):
     def __init__(self, x, y, color, width, height):
         pygame.sprite.Sprite.__init__(self)
-        # set the background to transparent
+
         self.image = pygame.Surface([width, height])
         self.image.fill(color)
         self.rect = self.image.get_rect()
@@ -18,11 +18,11 @@ class Block(pygame.sprite.Sprite):
 class Ellipse(pygame.sprite.Sprite):
     def __init__(self, x, y, color, width, height):
         pygame.sprite.Sprite.__init__(self)
-        # set the background to transparent
+
         self.image = pygame.Surface([width, height])
         self.image.set_colorkey(BLACK)
         self.image.fill(BLACK)
-        # draw ellipse
+
         pygame.draw.ellipse(self.image, color, [0, 0, width, height])
         self.rect = self.image.get_rect()
         self.rect.topleft = (x, y)

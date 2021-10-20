@@ -1,34 +1,33 @@
-import math
-from timeit import default_timer as timer
-
 import pygame.mixer
 
-from enemies import Blinky, Clyde, Inky, Pinky
+from enemies import Blinky, Inky, Pinky, Clyde
 from entity import Block, Ellipse
-from enviroment import generate_environment, draw_environment
+from environment import generate_environment, draw_environment
 from player import Player
-from parameters import *
+from parametrs import *
 
 pygame.mixer.init()
 
 
+
+
 class Game(object):
 
-    def __init__(self, records):
-        self.records = records
 
-        self.game_over = True
+
+    def __init__(self):
+
+        self.game_over = False
         self.win = False
         self.life = MAX_LIFE_LEVEL
-        # font for score on the screen
+
         self.font = pygame.font.Font(None, 35)
 
         self.score = 0
         self.level = 1
         self.grid = generate_environment()
 
-        self.player = Player(self.grid)
-        # paths blocks
+
         self.empty_blocks = pygame.sprite.Group()
         self.non_empty_blocks = pygame.sprite.Group()
         self.dots_group = pygame.sprite.Group()
@@ -45,22 +44,25 @@ class Game(object):
                     self.dots_group.add(Ellipse(j * BLOCK_SIZE + 12, i * BLOCK_SIZE + 12, WHITE, QUARTER_BLOCK_SIZE,
                                                 QUARTER_BLOCK_SIZE))
 
-        self.blinky = Blinky(self.grid)
-        self.clyde = Clyde(self.grid)
-        self.inky = Inky(self.grid)
-        self.pinky = Pinky(self.grid)
-        self.enemies = pygame.sprite.Group(self.blinky, self.clyde, self.inky, self.pinky)
+        self.enemies = pygame.sprite.Group()
+        self.player = Player(self.grid, self.dots_group, self.enemies)
 
-        self.path_search_engine_index = 0
-        self.timer_counter = 0
-        self.total_search_engine_time = 0
-        self.previous_search_engine_time = 0
+        block = pygame.sprite.spritecollide(self.player, self.non_empty_blocks, False)[0]
+        self.player_i = int((block.rect.y - QUARTER_BLOCK_SIZE) // BLOCK_SIZE)
+        self.player_j = int((block.rect.x - QUARTER_BLOCK_SIZE) // BLOCK_SIZE)
+
+        self.blinky = Blinky(self.grid, self.player_i, self.player_j)
+        self.clyde = Clyde(self.grid, self.player_i, self.player_j)
+        self.inky = Inky(self.grid, self.player_i, self.player_j)
+        self.pinky = Pinky(self.grid, self.player_i, self.player_j)
+        self.enemies.add(self.blinky, self.clyde, self.inky, self.pinky)
 
     def run_logic(self):
         if not self.game_over:
             self.player.update(self.empty_blocks)
             block_hit_list = pygame.sprite.spritecollide(self.player, self.dots_group, True)
             if len(block_hit_list) > 0:
+
                 self.score += len(block_hit_list)
             if self.life > 1:
                 block_hit_list = pygame.sprite.spritecollide(self.player, self.enemies, False)
@@ -69,30 +71,37 @@ class Game(object):
             else:
                 block_hit_list = pygame.sprite.spritecollide(self.player, self.enemies, True)
                 if len(block_hit_list) > 0:
+                    self.life = 0
                     self.player.explosion = True
 
             self.game_over = self.player.game_over
-            self.enemies.update()
-            # win effect
+
+            blocks = pygame.sprite.spritecollide(self.player, self.non_empty_blocks, False)
+            if len(blocks) != 0:
+                self.player_i = int((blocks[0].rect.y - QUARTER_BLOCK_SIZE) // BLOCK_SIZE)
+                self.player_j = int((blocks[0].rect.x - QUARTER_BLOCK_SIZE) // BLOCK_SIZE)
+
+            self.enemies.update(self.player_i, self.player_j)
+
             if len(self.dots_group) == 0:
+
                 self.increase_level()
 
             if self.level == MAX_LEVEL + 1:
                 self.game_over = True
                 self.win = True
 
-            if self.game_over:
-                self.records.add_score(self.score)
 
     def decrease_life_level(self):
         self.life -= 1
-        self.player = Player(self.grid)
+        self.player = Player(self.grid, self.dots_group, self.enemies)
+
 
     def increase_level(self):
         level = self.level + 1
         score = self.score
         life = self.life
-        self.__init__(self.records)
+        self.__init__()
         self.level = level
         self.life = life
         self.score = score
@@ -103,69 +112,9 @@ class Game(object):
         self.dots_group.draw(screen)
         self.enemies.draw(screen)
         screen.blit(self.player.image, self.player.rect)
-        # Render the text for the score
-        text = self.font.render("Score: {}; HP: {}".format(self.score, self.life), True,
+
+        text = self.font.render("Score: {}; Level: {}: HP: {}".format(self.score, self.level, self.life), True,
                                 WHITE)
-        # put text on screen
+
         screen.blit(text, [120, 20])
-        self.display_search_results(screen)
-
-    def display_search_results(self, screen):
-        colors = [RED, YELLOW, BLUE, PURPLE]
-        total_time = 0
-        for sprite, color in zip(self.enemies.sprites(), colors):
-            j = sprite.rect.centerx // BLOCK_SIZE
-            i = sprite.rect.centery // BLOCK_SIZE
-
-            start = timer()
-            path_to_player = self.apply_path_search_to_player(i, j)
-            end = timer()
-            total_time += end - start
-
-            display_line_array(screen, list(
-                map(lambda x: (BLOCK_SIZE * x[0] + HALF_BLOCK_SIZE, BLOCK_SIZE * (x[1] + 0.5)),
-                    path_to_player)), color)
-        self.total_search_engine_time += total_time
-        self.increase_timer_counter()
-        text = self.font.render("{}: {:5f}".format(self.name_of_path_search_engine(), self.previous_search_engine_time),
-                                True, WHITE)
-        screen.blit(text, [SCR_WIDTH - 200, 20])
-
-    def increase_timer_counter(self) -> None:
-        self.timer_counter += 1
-        if self.timer_counter == 15:
-            self.timer_counter = 0
-            self.previous_search_engine_time = self.total_search_engine_time
-            self.total_search_engine_time = 0
-
-    def name_of_path_search_engine(self) -> str:
-        if self.path_search_engine_index == 0:
-            return 'BFS'
-        if self.path_search_engine_index == 1:
-            return 'DFS'
-        return 'UCS'
-
-    def apply_path_search_to_player(self, i, j):
-        if self.path_search_engine_index == 0:
-            return self.player.breadth_first_search(i, j)
-        if self.path_search_engine_index == 1:
-            return self.player.deep_first_search(i, j)
-        return self.player.uniform_cost_search(i, j)
-
-    def change_path_search_engine(self) -> None:
-        self.path_search_engine_index += 1
-        self.path_search_engine_index %= 3
-
-
-def display_line_array(screen, dots_array, color=BLUE):
-    if len(dots_array) < 2:
-        return
-    start_point = dots_array[0]
-    for point in dots_array[1:]:
-        if distance(start_point, point) <= 1.5 * BLOCK_SIZE:
-            pygame.draw.line(screen, color, [start_point[1], start_point[0]], [point[1], point[0]], 6)
-        start_point = point
-
-
-def distance(dot_1, dot_2):
-    return math.sqrt((dot_1[0] - dot_2[0]) ** 2 + (dot_1[1] - dot_2[1]) ** 2)
+        pygame.draw.ellipse(screen, RED, self.player.want_coin.rect)
