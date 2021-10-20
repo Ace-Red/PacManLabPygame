@@ -13,7 +13,7 @@ class Spirit(pygame.sprite.Sprite, Entity):
 
         self.change_x = 0
         self.change_y = 0
-        # load image
+
         self.image = pygame.image.load(image_path).convert_alpha()
         self.rect = self.image.get_rect()
         self.rect.topleft = self.get_random_start_position()

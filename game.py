@@ -113,7 +113,7 @@ class Game(object):
         self.enemies.draw(screen)
         screen.blit(self.player.image, self.player.rect)
 
-        text = self.font.render("Score: {}; Level: {}: HP: {}".format(self.score, self.level, self.life), True,
+        text = self.font.render("Score: {}; HP: {}".format(self.score, self.life), True,
                                 WHITE)
 
         screen.blit(text, [120, 20])

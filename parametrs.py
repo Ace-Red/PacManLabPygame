@@ -11,7 +11,7 @@ BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 BLUE = (0, 0, 255)
 GREEN = (0, 0, 255)
-RED = (255, 0, 0)
+RED = (0, 255, 0)
 
 MAX_LEVEL = 1
 MAX_LIFE_LEVEL = 2
