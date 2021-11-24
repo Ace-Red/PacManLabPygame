@@ -1,8 +1,9 @@
-from random import choice
+from copy import copy
 
 import pygame
-from pygame.sprite import Group, Sprite
+from pygame.sprite import Group
 
+from enemies import Pinky
 from entity import Entity
 from parametrs import *
 
@@ -32,16 +33,14 @@ class Player(pygame.sprite.Sprite, Entity):
         img = pygame.image.load("image/explosion.png").convert()
         self.explosion_animation = Animation(img, 30, 30)
 
-        self.want_coin = Sprite()
         self.dots_group = dots_group
         self.enemies = enemies
-        self.change_want_coin()
+        self.min_algorithm = self.min_turn
 
     def update(self, empty_blocks):
         if not self.explosion:
             if self.rect.topleft[0] % BLOCK_SIZE == 0 and self.rect.topleft[1] % BLOCK_SIZE == 0:
                 self.change_direction()
-
             if self.rect.right < 0:
                 self.rect.left = SCREEN_WIDTH
             elif self.rect.left > SCREEN_WIDTH:
@@ -52,7 +51,6 @@ class Player(pygame.sprite.Sprite, Entity):
                 self.rect.bottom = 0
             self.rect.x += self.change_x
             self.rect.y += self.change_y
-
             if self.change_x > 0:
                 self.move_right_animation.update(10)
                 self.image = self.move_right_animation.get_current_image()
@@ -74,14 +72,12 @@ class Player(pygame.sprite.Sprite, Entity):
             self.image = self.explosion_animation.get_current_image()
 
     def change_direction(self):
-        if self.want_coin not in self.dots_group:
-            self.change_want_coin()
         j = self.rect.topleft[0] // BLOCK_SIZE
         i = self.rect.topleft[1] // BLOCK_SIZE
         if 0 > i or i >= DIMENSION_X or 0 > j or j >= DIMENSION_Y:
             return
-        want_i, want_j = self.sprite_to_coordinates()
-        direction = self.a_star(want_i, want_j)
+
+        direction = self.alfa_betta_pruning()
         if direction == "left":
             self.change_x = -4
             self.change_y = 0
@@ -95,59 +91,129 @@ class Player(pygame.sprite.Sprite, Entity):
             self.change_x = 0
             self.change_y = 4
 
-    def change_want_coin(self):
-        self.want_coin = choice(self.dots_group.sprites())
-
-    def sprite_to_coordinates(self):
-        return (self.want_coin.rect.topleft[1] - 12) // BLOCK_SIZE, (self.want_coin.rect.topleft[0] - 12) // BLOCK_SIZE
-
-    def a_star(self, want_i, want_j):
+    def alfa_betta_pruning(self):
         j = self.rect.topleft[0] // BLOCK_SIZE
         i = self.rect.topleft[1] // BLOCK_SIZE
-        visited = {(i, j)}
-        prices = dict()
+        all_coins = self.all_coins_indexes()
+        recursion_index = MAX_ALFA_BETTA_RECURSION
+        betta = float('inf')
+        v = float('-inf')
+        best_direction = ''
 
-        for node_to_visit_i, node_to_visit_j, direction in get_available_directions_coordinates(self.grid, i, j):
-            prices[(node_to_visit_i, node_to_visit_j)] = [
-                1 + heuristic(node_to_visit_i, node_to_visit_j, want_i, want_j),
-                direction]
+        grid = self.grid
+        all_directions = get_available_directions_coordinates(grid, i, j)
 
-        while len(prices) != 0:
-            cheapest_node = list(prices.keys())[0]
-            cheapest_price = prices[cheapest_node][0]
+        for direction_i, direction_j, direction in all_directions:
+            self.enemies.sprites()
+            new_enemies = list(map(lambda enemy: copy(enemy), self.enemies.sprites()))
+            count = 0
+            available_coins = list(all_coins)
+            if (direction_i, direction_j) in available_coins:
+                available_coins.remove((direction_i, direction_j))
+                count += 10
+            count += 1
+            result = self.min_algorithm(direction_i, direction_j, count, all_coins, v, betta, recursion_index - 1,
+                                        (i, j),
+                                        new_enemies)
+            if result >= v:
+                v = result
+                best_direction = direction
+        return best_direction
 
-            for key, value in prices.items():
-                if value[0] < cheapest_price:
-                    cheapest_price = value[0]
-                    cheapest_node = key
+    def all_coins_indexes(self):
+        return tuple(map(lambda topleft: ((topleft[1] - 12) // BLOCK_SIZE, (topleft[0] - 12) // BLOCK_SIZE),
+                         map(lambda coin: coin.rect.topleft, self.dots_group.sprites())))
 
-            visit_i, visit_j = cheapest_node
-            direction = prices[cheapest_node][1]
-            del prices[cheapest_node]
-            cheapest_price -= heuristic(visit_i, visit_j, want_i, want_j)
+    def enemies_heuristic(self, x, y):
+        h = 0
+        for sprite in self.enemies.sprites():
+            h += ENEMIES_HEURISTIC_CONSTANT / (1 + pacman_distance(sprite.rect.topleft[1] // BLOCK_SIZE, x, DIMENSION_X)
+                                               + pacman_distance(sprite.rect.topleft[0] // BLOCK_SIZE, y, DIMENSION_Y))
+        return h
 
-            if not (visit_i, visit_j) in visited:
-                visited.add((visit_i, visit_j))
-                if visit_i == want_i and visit_j == want_j:
-                    return direction
-                for node_to_visit_i, node_to_visit_j, _ in get_available_directions_coordinates(self.grid, visit_i,
-                                                                                                visit_j):
-                    h = heuristic(node_to_visit_i, node_to_visit_j, want_i, want_j)
-                    if (node_to_visit_i, node_to_visit_j) not in visited and (
-                            (node_to_visit_i, node_to_visit_j) not in prices or
-                            prices[(node_to_visit_i, node_to_visit_j)][0] > cheapest_price + 1 + h):
-                        prices[(node_to_visit_i, node_to_visit_j)] = [
-                            cheapest_price + 1 + h, direction]
+    def max_turn(self, i, j, score, dots, alfa, betta, recursion_index, previous, enemies) -> float:
+        if recursion_index == 0:
+            return score
+
+        v = float('-inf')
+
+        all_directions = get_available_directions_coordinates(self.grid, i, j)
+        for direction_i, direction_j, direction in all_directions:
+            if (direction_i, direction_j) == previous and len(all_directions) != 1:
+                continue
+
+            available_coins = list(dots)
+            new_score = score
+            if (direction_i, direction_j) in available_coins:
+                available_coins.remove((direction_i, direction_j))
+                new_score += 1
+            result = self.min_algorithm(direction_i, direction_j, new_score, available_coins, max(alfa, v), betta,
+                                        recursion_index - 1, (i, j), enemies)
+            if result > v:
+                v = result
+                if v > betta:
+                    return v
+        if v > 0:
+            return v
+
+        for direction_i, direction_j, direction in all_directions:
+            if (direction_i, direction_j) != previous or len(all_directions) == 1:
+                continue
+
+            available_coins = list(dots)
+            new_score = score
+            if (direction_i, direction_j) in available_coins:
+                available_coins.remove((direction_i, direction_j))
+                new_score += 10
+            result = self.min_algorithm(direction_i, direction_j, new_score, available_coins, max(alfa, v), betta,
+                                        recursion_index - 1, (i, j), enemies)
+            if result > v:
+                v = result
+                if v > betta:
+                    return v
+        return v
+
+    def min_turn(self, i, j, score, dots, alfa, betta, recursion_index, previous, enemies) -> float:
+        new_enemies = list(map(lambda enemy: copy(enemy), enemies))
+
+        x_dimension = len(self.grid)
+        y_dimension = len(self.grid[0])
+
+        for enemy in new_enemies:
+            enemy.rect = enemy.rect.copy()
+            enemy.update(i, j)
+            enemy_i, enemy_j = enemy.get_coordinates()
+            if pacman_distance(i, enemy_i, x_dimension) + pacman_distance(j, enemy_j, y_dimension) < 3:
+                return float('-inf')
+
+        return self.max_turn(i, j, score, dots, alfa, betta, recursion_index, previous, new_enemies)
+
+    def expect_turn(self, i, j, score, dots, alfa, betta, recursion_index, previous, enemies) -> float:
+        new_enemies = list(map(lambda enemy: copy(enemy), enemies))
+
+        x_dimension = len(self.grid)
+        y_dimension = len(self.grid[0])
+
+        for enemy in new_enemies:
+            enemy.rect = enemy.rect.copy()
+            enemy.update(i, j)
+            enemy_i, enemy_j = enemy.get_coordinates()
+            if pacman_distance(i, enemy_i, x_dimension) + pacman_distance(j, enemy_j, y_dimension) < 3 \
+                    and not isinstance(enemy, Pinky):
+                return float('-inf')
+
+        for enemy in new_enemies:
+            enemy_i, enemy_j = enemy.get_coordinates()
+            if pacman_distance(i, enemy_i, x_dimension) + pacman_distance(j, enemy_j, y_dimension) < 3:
+                return 1 / 3 * self.max_turn(i, j, score, dots, alfa, betta, recursion_index, previous, new_enemies)
+
+        return self.max_turn(i, j, score, dots, alfa, betta, recursion_index, previous, new_enemies)
 
 
 def pacman_distance(x1, x2, dimension):
     if x1 > x2:
         x1, x2 = x2, x1
     return min(x2 - x1, x1 + dimension - x2)
-
-
-def heuristic(x, y, aim_x, aim_y):
-    return 1 * (pacman_distance(x, aim_x, DIMENSION_X) + pacman_distance(y, aim_y, DIMENSION_Y))
 
 
 def get_available_directions_coordinates(grid, i, j):
@@ -166,28 +232,21 @@ def get_available_directions_coordinates(grid, i, j):
 
 class Animation(object):
     def __init__(self, img, width, height):
-
         self.sprite_sheet = img
         self.image_list = []
         self.load_images(width, height)
-
         self.index = 0
-
         self.clock = 1
 
     def load_images(self, width, height):
-
         for y in range(0, self.sprite_sheet.get_height(), height):
             for x in range(0, self.sprite_sheet.get_width(), width):
                 img = self.get_image(x, y, width, height)
                 self.image_list.append(img)
 
     def get_image(self, x, y, width, height):
-
         image = pygame.Surface([width, height]).convert()
-
         image.blit(self.sprite_sheet, (0, 0), (x, y, width, height))
-
         image.set_colorkey(BLACK)
         return image
 
@@ -204,3 +263,9 @@ class Animation(object):
         if self.clock in range(1, fps, 8):
             self.index += 1
             self.index %= self.get_length()
+
+
+class ExpectPacman(Player):
+    def __init__(self, grid, dots_group: Group, enemies: Group):
+        super().__init__(grid, dots_group, enemies)
+        self.min_algorithm = self.expect_turn
